@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmeTV Clone - Random Video Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .video-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .videos-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .video-wrapper {
+            position: relative;
+            background: #1a1a1a;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .controls {
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e68900;
+            transform: translateY(-2px);
+        }
+
+        .chat-section {
+            width: 300px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: rgba(102, 126, 234, 0.1);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.sent {
+            background: #4CAF50;
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.received {
+            background: #e3f2fd;
+            color: #333;
+        }
+
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+
+        .chat-input button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 10;
+        }
+
+        .status h2 {
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .chat-section {
+                width: 100%;
+                height: 200px;
+            }
+            
+            .videos-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="video-section">
+            <div class="videos-container">
+                <div class="video-wrapper">
+                    <video id="localVideo" autoplay muted playsinline></video>
+                    <div class="video-label">You</div>
+                </div>
+                <div class="video-wrapper">
+                    <video id="remoteVideo" autoplay playsinline></video>
+                    <div class="video-label">Stranger</div>
+                </div>
+            </div>
+            
+            <div class="status hidden" id="status">
+                <h2 id="statusText">Connecting...</h2>
+                <div class="spinner"></div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn-primary" id="startBtn">Start Chat</button>
+                <button class="btn-warning hidden" id="nextBtn">Next</button>
+                <button class="btn-secondary hidden" id="stopBtn">Stop</button>
+            </div>
+        </div>
+        
+        <div class="chat-section">
+            <div class="chat-header">
+                <h3>Chat Messages</h3>
+                <small id="connectionStatus">Disconnected</small>
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="Type a message..." disabled>
+                <button id="sendBtn" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        class OmeTVClone {
+            constructor() {
+                this.socket = io();
+                this.localVideo = document.getElementById('localVideo');
+                this.remoteVideo = document.getElementById('remoteVideo');
+                this.localStream = null;
+                this.remoteStream = null;
+                this.peerConnection = null;
+                this.currentPartner = null;
+                this.isInChat = false;
+                
+                this.initializeElements();
+                this.setupSocketEvents();
+                this.setupMediaPermissions();
+            }
+
+            initializeElements() {
+                this.startBtn = document.getElementById('startBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.status = document.getElementById('status');
+                this.statusText = document.getElementById('statusText');
+                this.chatMessages = document.getElementById('chatMessages');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendBtn = document.getElementById('sendBtn');
+                this.connectionStatus = document.getElementById('connectionStatus');
+
+                this.startBtn.addEventListener('click', () => this.startChat());
+                this.nextBtn.addEventListener('click', () => this.nextPartner());
+                this.stopBtn.addEventListener('click', () => this.stopChat());
+                this.sendBtn.addEventListener('click', () => this.sendMessage());
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+            }
+
+            async setupMediaPermissions() {
+                try {
+                    this.localStream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true
+                    });
+                    this.localVideo.srcObject = this.localStream;
+                    this.connectionStatus.textContent = 'Ready to connect';
+                } catch (error) {
+                    console.error('Error accessing media devices:', error);
+                    alert('Please allow camera and microphone access to use this application.');
+                }
+            }
+
+            setupSocketEvents() {
+                this.socket.on('connect', () => {
+                    console.log('Connected to server');
+                    this.connectionStatus.textContent = 'Connected to server';
+                });
+
+                this.socket.on('matched', (data) => {
+                    console.log('Matched with partner:', data);
+                    this.currentPartner = data.partner;
+                    this.isInChat = true;
+                    this.hideStatus();
+                    this.showChatControls();
+                    this.enableChat();
+                    
+                    if (data.isInitiator) {
+                        this.createOffer();
+                    }
+                });
+
+                this.socket.on('offer', async (data) => {
+                    console.log('Received offer from:', data.from);
+                    await this.handleOffer(data.offer, data.from);
+                });
+
+                this.socket.on('answer', async (data) => {
+                    console.log('Received answer from:', data.from);
+                    await this.handleAnswer(data.answer);
+                });
+
+                this.socket.on('ice-candidate', async (data) => {
+                    console.log('Received ICE candidate from:', data.from);
+                    await this.handleIceCandidate(data.candidate);
+                });
+
+                this.socket.on('chat-message', (data) => {
+                    this.displayMessage(data.message, 'received');
+                });
+
+                this.socket.on('partner-disconnected', () => {
+                    this.handlePartnerDisconnected();
+                });
+
+                this.socket.on('disconnect', () => {
+                    this.connectionStatus.textContent = 'Disconnected from server';
+                });
+            }
+
+            async createPeerConnection() {
+                const configuration = {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                };
+
+                this.peerConnection = new RTCPeerConnection(configuration);
+
+                this.peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        this.socket.emit('ice-candidate', {
+                            to: this.currentPartner,
+                            candidate: event.candidate
+                        });
+                    }
+                };
+
+                this.peerConnection.ontrack = (event) => {
+                    console.log('Received remote stream');
+                    this.remoteVideo.srcObject = event.streams[0];
+                };
+
+                if (this.localStream) {
+                    this.localStream.getTracks().forEach(track => {
+                        this.peerConnection.addTrack(track, this.localStream);
+                    });
+                }
+            }
+
+            async createOffer() {
+                await this.createPeerConnection();
+                
+                const offer = await this.peerConnection.createOffer();
+                await this.peerConnection.setLocalDescription(offer);
+                
+                this.socket.emit('offer', {
+                    to: this.currentPartner,
+                    offer: offer
+                });
+            }
+
+            async handleOffer(offer, from) {
+                await this.createPeerConnection();
+                
+                await this.peerConnection.setRemoteDescription(offer);
+                const answer = await this.peerConnection.createAnswer();
+                await this.peerConnection.setLocalDescription(answer);
+                
+                this.socket.emit('answer', {
+                    to: from,
+                    answer: answer
+                });
+            }
+
+            async handleAnswer(answer) {
+                await this.peerConnection.setRemoteDescription(answer);
+            }
+
+            async handleIceCandidate(candidate) {
+                if (this.peerConnection) {
+                    await this.peerConnection.addIceCandidate(candidate);
+                }
+            }
+
+            startChat() {
+                this.showStatus('Looking for someone to chat with...');
+                this.socket.emit('join-queue');
+                this.startBtn.classList.add('hidden');
+            }
+
+            nextPartner() {
+                this.socket.emit('next-partner');
+                this.resetChat();
+                this.showStatus('Looking for someone new...');
+            }
+
+            stopChat() {
+                this.socket.emit('leave-chat');
+                this.resetChat();
+                this.showStartButton();
+            }
+
+            resetChat() {
+                if (this.peerConnection) {
+                    this.peerConnection.close();
+                    this.peerConnection = null;
+                }
+                
+                this.remoteVideo.srcObject = null;
+                this.currentPartner = null;
+                this.isInChat = false;
+                this.clearChat();
+                this.disableChat();
+            }
+
+            handlePartnerDisconnected() {
+                this.displayMessage('Stranger disconnected', 'system');
+                this.resetChat();
+                this.showStatus('Partner disconnected. Click Next to find someone new.');
+                this.nextBtn.classList.remove('hidden');
+                this.stopBtn.classList.remove('hidden');
+            }
+
+            sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (message && this.currentPartner) {
+                    this.socket.emit('chat-message', {
+                        to: this.currentPartner,
+                        message: message
+                    });
+                    this.displayMessage(message, 'sent');
+                    this.messageInput.value = '';
+                }
+            }
+
+            displayMessage(message, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                messageDiv.textContent = message;
+                this.chatMessages.appendChild(messageDiv);
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+
+            showStatus(text) {
+                this.statusText.textContent = text;
+                this.status.classList.remove('hidden');
+            }
+
+            hideStatus() {
+                this.status.classList.add('hidden');
+            }
+
+            showChatControls() {
+                this.nextBtn.classList.remove('hidden');
+                this.stopBtn.classList.remove('hidden');
+            }
+
+            showStartButton() {
+                this.startBtn.classList.remove('hidden');
+                this.nextBtn.classList.add('hidden');
+                this.stopBtn.classList.add('hidden');
+                this.hideStatus();
+            }
+
+            enableChat() {
+                this.messageInput.disabled = false;
+                this.sendBtn.disabled = false;
+                this.connectionStatus.textContent = 'Connected to stranger';
+            }
+
+            disableChat() {
+                this.messageInput.disabled = true;
+                this.sendBtn.disabled = true;
+                this.connectionStatus.textContent = 'Not connected';
+            }
+
+            clearChat() {
+                this.chatMessages.innerHTML = '';
+            }
+        }
+
+        // Initialize the application when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new OmeTVClone();
+        });
+    </script>
+</body>
+</html>
