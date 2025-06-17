@@ -14,13 +14,14 @@
         body {
             font-family: 'Arial', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .container {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
+            max-height: 100vh;
         }
 
         .video-section {
@@ -28,12 +29,14 @@
             display: flex;
             flex-direction: column;
             position: relative;
+            min-height: 0; /* Allows flex item to shrink */
         }
 
         .videos-container {
             flex: 1;
             position: relative;
-            padding: 20px;
+            padding: 15px;
+            min-height: 200px; /* Minimum height untuk video */
         }
 
         .video-wrapper {
@@ -56,10 +59,10 @@
         /* Video sendiri - picture-in-picture */
         .video-wrapper.local {
             position: absolute;
-            width: 280px;
-            height: 180px;
-            bottom: 20px;
-            right: 20px;
+            width: 250px;
+            height: 150px;
+            bottom: 15px;
+            right: 15px;
             z-index: 10;
             border: 3px solid rgba(255,255,255,0.3);
             transition: all 0.3s ease;
@@ -100,12 +103,15 @@
         }
 
         .controls {
-            padding: 20px;
+            padding: 15px 20px;
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
             display: flex;
             justify-content: center;
             gap: 15px;
+            flex-wrap: wrap;
+            min-height: 60px;
+            align-items: center;
         }
 
         button {
@@ -249,19 +255,88 @@
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
+                max-height: 100vh;
             }
             
             .chat-section {
                 width: 100%;
                 height: 200px;
+                max-height: 200px;
+            }
+            
+            .video-section {
+                flex: 1;
+                min-height: calc(100vh - 200px);
             }
             
             /* Mobile: Video sendiri lebih kecil */
             .video-wrapper.local {
-                width: 150px;
-                height: 100px;
+                width: 120px;
+                height: 80px;
                 bottom: 10px;
                 right: 10px;
+            }
+            
+            .controls {
+                padding: 10px;
+                gap: 10px;
+            }
+            
+            button {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+        }
+
+        /* Landscape mode optimizations */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .chat-section {
+                width: 250px !important;
+                height: 100vh !important;
+            }
+            
+            .container {
+                flex-direction: row !important;
+            }
+            
+            .controls {
+                padding: 8px 15px;
+                min-height: 50px;
+            }
+            
+            button {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+            
+            .video-wrapper.local {
+                width: 150px;
+                height: 100px;
+                bottom: 60px; /* Di atas tombol kontrol */
+                right: 10px;
+            }
+            
+            .videos-container {
+                padding: 10px;
+            }
+        }
+
+        /* Very small screens */
+        @media (max-height: 400px) {
+            .controls {
+                padding: 5px 10px;
+                min-height: 40px;
+            }
+            
+            button {
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+            
+            .video-wrapper.local {
+                width: 120px;
+                height: 80px;
+                bottom: 50px;
             }
         }
     </style>
