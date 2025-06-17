@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SayHai - Random Video Chat</title>
+    <title>OmeTV Clone - Random Video Chat</title>
     <style>
         * {
             margin: 0;
@@ -32,9 +32,7 @@
 
         .videos-container {
             flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            position: relative;
             padding: 20px;
         }
 
@@ -46,11 +44,47 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         }
 
+        /* Video stranger - tampilan utama penuh */
+        .video-wrapper.stranger {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        /* Video sendiri - picture-in-picture */
+        .video-wrapper.local {
+            position: absolute;
+            width: 280px;
+            height: 180px;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+            border: 3px solid rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .video-wrapper.local:hover {
+            transform: scale(1.1);
+            border-color: rgba(255,255,255,0.6);
+        }
+
         video {
             width: 100%;
             height: 100%;
             object-fit: cover;
             border-radius: 15px;
+        }
+
+        /* Mirror effect untuk video sendiri */
+        #localVideo {
+            transform: scaleX(-1);
+        }
+
+        /* Video stranger tetap normal */
+        #remoteVideo {
+            transform: none;
         }
 
         .video-label {
@@ -222,9 +256,12 @@
                 height: 200px;
             }
             
-            .videos-container {
-                grid-template-columns: 1fr;
-                grid-template-rows: 1fr 150px;
+            /* Mobile: Video sendiri lebih kecil */
+            .video-wrapper.local {
+                width: 150px;
+                height: 100px;
+                bottom: 10px;
+                right: 10px;
             }
         }
     </style>
@@ -233,13 +270,16 @@
     <div class="container">
         <div class="video-section">
             <div class="videos-container">
-                <div class="video-wrapper">
-                    <video id="localVideo" autoplay muted playsinline></video>
-                    <div class="video-label">You</div>
-                </div>
-                <div class="video-wrapper">
+                <!-- Video stranger - tampilan utama -->
+                <div class="video-wrapper stranger">
                     <video id="remoteVideo" autoplay playsinline></video>
                     <div class="video-label">Stranger</div>
+                </div>
+                
+                <!-- Video sendiri - picture-in-picture -->
+                <div class="video-wrapper local">
+                    <video id="localVideo" autoplay muted playsinline></video>
+                    <div class="video-label">You</div>
                 </div>
             </div>
             
@@ -252,6 +292,8 @@
                 <button class="btn-primary" id="startBtn">Start Chat</button>
                 <button class="btn-warning hidden" id="nextBtn">Next</button>
                 <button class="btn-secondary hidden" id="stopBtn">Stop</button>
+                <button class="btn-secondary" id="toggleCamera">📹</button>
+                <button class="btn-secondary" id="toggleMic">🎤</button>
             </div>
         </div>
         
@@ -290,6 +332,8 @@
                 this.startBtn = document.getElementById('startBtn');
                 this.nextBtn = document.getElementById('nextBtn');
                 this.stopBtn = document.getElementById('stopBtn');
+                this.toggleCamera = document.getElementById('toggleCamera');
+                this.toggleMic = document.getElementById('toggleMic');
                 this.status = document.getElementById('status');
                 this.statusText = document.getElementById('statusText');
                 this.chatMessages = document.getElementById('chatMessages');
@@ -300,6 +344,8 @@
                 this.startBtn.addEventListener('click', () => this.startChat());
                 this.nextBtn.addEventListener('click', () => this.nextPartner());
                 this.stopBtn.addEventListener('click', () => this.stopChat());
+                this.toggleCamera.addEventListener('click', () => this.toggleCameraOnOff());
+                this.toggleMic.addEventListener('click', () => this.toggleMicOnOff());
                 this.sendBtn.addEventListener('click', () => this.sendMessage());
                 this.messageInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.sendMessage();
@@ -308,15 +354,44 @@
 
             async setupMediaPermissions() {
                 try {
+                    // Cek apakah browser support getUserMedia
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error('Browser tidak mendukung akses kamera');
+                    }
+
+                    this.showStatus('Meminta izin akses kamera dan mikrofon...');
+                    
                     this.localStream = await navigator.mediaDevices.getUserMedia({
-                        video: true,
-                        audio: true
+                        video: { 
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            facingMode: "user" // Kamera depan untuk mobile
+                        },
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        }
                     });
+                    
                     this.localVideo.srcObject = this.localStream;
-                    this.connectionStatus.textContent = 'Ready to connect';
+                    this.connectionStatus.textContent = 'Kamera siap - Klik Start Chat';
+                    this.hideStatus();
+                    
                 } catch (error) {
                     console.error('Error accessing media devices:', error);
-                    alert('Please allow camera and microphone access to use this application.');
+                    
+                    let errorMessage = 'Terjadi kesalahan saat mengakses kamera.';
+                    
+                    if (error.name === 'NotAllowedError') {
+                        errorMessage = 'Izin kamera ditolak. Silakan refresh halaman dan izinkan akses kamera.';
+                    } else if (error.name === 'NotFoundError') {
+                        errorMessage = 'Kamera tidak ditemukan. Pastikan kamera terhubung.';
+                    } else if (error.name === 'NotSupportedError') {
+                        errorMessage = 'Browser tidak mendukung akses kamera.';
+                    }
+                    
+                    this.showStatus(errorMessage);
+                    alert(errorMessage + '\n\nPastikan:\n- Izinkan akses kamera dan mikrofon\n- Gunakan HTTPS untuk production\n- Kamera tidak digunakan aplikasi lain');
                 }
             }
 
@@ -527,6 +602,28 @@
 
             clearChat() {
                 this.chatMessages.innerHTML = '';
+            }
+
+            toggleCameraOnOff() {
+                if (this.localStream) {
+                    const videoTrack = this.localStream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        videoTrack.enabled = !videoTrack.enabled;
+                        this.toggleCamera.textContent = videoTrack.enabled ? '📹' : '📹❌';
+                        this.toggleCamera.style.background = videoTrack.enabled ? '#f44336' : '#4CAF50';
+                    }
+                }
+            }
+
+            toggleMicOnOff() {
+                if (this.localStream) {
+                    const audioTrack = this.localStream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        audioTrack.enabled = !audioTrack.enabled;
+                        this.toggleMic.textContent = audioTrack.enabled ? '🎤' : '🎤❌';
+                        this.toggleMic.style.background = audioTrack.enabled ? '#f44336' : '#4CAF50';
+                    }
+                }
             }
         }
 
